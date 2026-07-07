@@ -1,0 +1,22 @@
+# Virtual Enviroment
+venv/
+
+# Raw data (big CSVs)
+1_raw_data/*.csv
+
+
+2_sql_scripts/.vs/
+
+
+# Cache Python
+__pycache__/
+*.pyc
+
+# file systems
+.DS_Store
+Thumbs.db
+
+# Big PowerBI files
+3_powerbi/analise_vendas.pbix
+3_powerbi/1_sql_queries/
+*.pbix-backup
