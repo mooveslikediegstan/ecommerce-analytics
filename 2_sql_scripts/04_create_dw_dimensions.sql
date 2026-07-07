@@ -8,7 +8,7 @@ GO
 -- Calendar
 CREATE TABLE [dw].[Dim_Calendar] (
     date_key INT PRIMARY KEY,
-    complete_date DATE NOT NULL UNIQUE,
+    date_date DATE NOT NULL UNIQUE,
     date_year INT,
     date_month INT,
     month_name VARCHAR(20),
