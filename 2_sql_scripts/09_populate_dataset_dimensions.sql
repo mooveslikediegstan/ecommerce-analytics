@@ -1,76 +1,76 @@
 -- ============================================================================
--- 9. CRIAR PROCEDURE PARA CARGA DE DADOS
+-- 9. CREATE PROCEDURES TO LOAD DW DIMENSIONS
 -- ============================================================================
  
 
-CREATE PROCEDURE [dw].[sp_Load_Dimension_Clientes]
+CREATE PROCEDURE [dw].[sp_Load_Dimension_Customers]
 AS
 BEGIN
     SET NOCOUNT ON;
     BEGIN TRY
  
-        -- CTE agrega os dados de pedidos por cliente antes do INSERT
-        -- evitando duas subqueries correlacionadas no SELECT principal
-        WITH pedidos_por_cliente AS (
+        -- CTE aggregates order data by customer before INSERT command
+
+        WITH orders_by_customer AS (
             SELECT
                 customer_id,
-                MIN(CAST(order_purchase_timestamp AS DATE)) AS primeira_compra,
-                COUNT(*)                                    AS total_compras
+                MIN(CAST(order_purchase_timestamp AS DATE)) AS first_purchase,
+                COUNT(*) AS total_purchases
             FROM [staging].[stg_orders]
             GROUP BY customer_id
         ),
-        clientes_novos AS (
-            -- filtra apenas clientes que ainda não existem na dimensão
+        new_customers AS (
+            -- filter only the customers which do not exist in the dimension
             SELECT
                 sc.customer_id,
                 sc.customer_unique_id,
                 sc.customer_city,
                 sc.customer_state,
-                pc.primeira_compra,
-                pc.total_compras
+                oc.first_purchase,
+                oc.total_sales
             FROM [staging].[stg_customers] sc
-            INNER JOIN pedidos_por_cliente pc ON sc.customer_id = pc.customer_id
-            LEFT JOIN  [dw].[Dim_Clientes] dc ON sc.customer_id = dc.cliente_id
-            WHERE dc.cliente_id IS NULL  -- equivalente ao NOT EXISTS, mais legível
+            INNER JOIN orders_by_customer oc ON sc.customer_id = pc.customer_id
+            LEFT JOIN  [dw].[Dim_Customers] dc ON sc.customer_id = dc.customer_id
+            WHERE dc.customer_id IS NULL  -- equivalent to NOT EXISTS, much cleaner
         )
-        INSERT INTO [dw].[Dim_Clientes] (
-            cliente_id,
+        INSERT INTO [dw].[Dim_Customers] (
+            customer_id,
             customer_unique_id,
-            cidade,
-            estado,
-            data_primeira_compra,
-            total_compras_historico
+            city,
+            city_state,
+            first_purchase_date,
+            total_purchase_history
         )
         SELECT
             customer_id,
             customer_unique_id,
             customer_city,
             customer_state,
-            primeira_compra,
-            total_compras
-        FROM clientes_novos;
+            first_purchase,
+            total_sales
+        FROM new_customers;
  
-        PRINT 'Dimensão Clientes carregada com sucesso!';
+        PRINT 'Customer Dim loaded successfully!';
     END TRY
     BEGIN CATCH
-        PRINT 'Erro na carga de Clientes: ' + ERROR_MESSAGE();
+        PRINT 'Error on loading Customers: ' + ERROR_MESSAGE();
         THROW;
     END CATCH
 END
 GO
  
  
-CREATE PROCEDURE [dw].[sp_Load_Dimension_Produtos]
+CREATE PROCEDURE [dw].[sp_Load_Dimension_Products]
 AS
 BEGIN
     SET NOCOUNT ON;
     BEGIN TRY
  
-        -- CTE trata NULLs e filtra produtos já existentes
-        WITH produtos_novos AS (
+        -- CTE treats NULLs and filters existing products
+        WITH new_products AS (
             SELECT
                 sp.product_id,
-                ISNULL(sp.product_category_name, 'Não Categorizados') AS categoria,
+                ISNULL(sp.product_category_name, 'Not categorized') AS category,
                 sp.product_name_lenght,
                 sp.product_description_lenght,
                 sp.product_photos_qty,
@@ -79,23 +79,23 @@ BEGIN
                 sp.product_height_cm,
                 sp.product_width_cm
             FROM [staging].[stg_products] sp
-            LEFT JOIN [dw].[Dim_Produtos] dp ON sp.product_id = dp.produto_id
-            WHERE dp.produto_id IS NULL
+            LEFT JOIN [dw].[Dim_Products] dp ON sp.product_id = dp.product_id
+            WHERE dp.product_id IS NULL
         )
-        INSERT INTO [dw].[Dim_Produtos] (
-            produto_id,
-            categoria_produto,
-            nome_comprimento,
-            descricao_comprimento,
-            qtd_fotos,
-            peso_g,
-            comprimento_cm,
-            altura_cm,
-            largura_cm
+        INSERT INTO [dw].[Dim_Products] (
+            product_id,
+            product_category,
+            name_length,
+            description_length,
+            qtty_of_photos,
+            weight_g,
+            length_cm,
+            height_cm,
+            width_cm
         )
         SELECT
             product_id,
-            categoria,
+            category,
             product_name_lenght,
             product_description_lenght,
             product_photos_qty,
@@ -103,12 +103,12 @@ BEGIN
             product_length_cm,
             product_height_cm,
             product_width_cm
-        FROM produtos_novos;
+        FROM new_products;
  
-        PRINT 'Dimensão Produtos carregada com sucesso!';
+        PRINT 'Products loaded successfully!';
     END TRY
     BEGIN CATCH
-        PRINT 'Erro na carga de Produtos: ' + ERROR_MESSAGE();
+        PRINT 'Error loading Products:' + ERROR_MESSAGE();
         THROW;
     END CATCH
 END
@@ -121,8 +121,8 @@ BEGIN
     SET NOCOUNT ON;
     BEGIN TRY
  
-        -- CTE deduplica sellers do staging e filtra os já existentes
-        WITH sellers_novos AS (
+        -- CTE filters existing Sellers
+        WITH new_sellers AS (
             SELECT DISTINCT
                 ss.seller_id,
                 ss.seller_city,
@@ -140,12 +140,12 @@ BEGIN
             seller_id,
             seller_city,
             seller_state
-        FROM sellers_novos;
+        FROM new_sellers;
  
-        PRINT 'Dimensão Sellers carregada com sucesso!';
+        PRINT 'Sellers loaded successfully!';
     END TRY
     BEGIN CATCH
-        PRINT 'Erro na carga de Sellers: ' + ERROR_MESSAGE();
+        PRINT 'Error loading Sellers: ' + ERROR_MESSAGE();
         THROW;
     END CATCH
 END
