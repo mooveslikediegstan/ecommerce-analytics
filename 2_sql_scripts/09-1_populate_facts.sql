@@ -12,15 +12,6 @@ WITH item_orders as (
     JOIN [dw].[Dim_Products] dp ON soi.product_id = dp.product_id
     JOIN [dw].[Dim_Sellers] ds ON soi.seller_id = ds.seller_id
 ),
-aggregated_payments as (
-    SELECT
-        order_id,
-        payment_type,
-        MAX(payment_installments) AS no_of_installments,
-        SUM(payment_value) as payment_value
-    FROM [staging].[stg_payments]
-    GROUP BY [order_id],[payment_type]
-),
 calendar as (
     SELECT
         date_key,
@@ -36,12 +27,9 @@ orders AS(
         cld.date_key as purchase_date_key,
         cld2.date_key as delivery_date_key,
         ds.status_key,
-        dpay.payment_key,
         io.price,
         io.freight_value,
-        io.total_value,  
-        ap.payment_value,
-        ap.no_of_installments,
+        io.total_value,
         CAST(io.shipping_limit_date as DATE) AS shipping_limit_date,
         CAST(so.order_estimated_delivery_date as DATE) AS order_estimated_delivery_date,
         CAST(so.order_delivered_customer_date as DATE) AS order_delivered_customer_date,
@@ -65,37 +53,37 @@ orders AS(
 
 SELECT TOP 100 * FROM orders;
 
--- Fact Vendas
-CREATE TABLE [dw].[Fact_Sales] (
-    sales_key INT PRIMARY KEY IDENTITY(1,1),
-    order_id VARCHAR(50),
-    customer_key INT,
-    product_key INT,
-    seller_key INT,
-    purchase_date_key INT,
-    delivery_date_key INT,
-    status_key INT,
-    payment_key INT,
-    -- Metrics
-    quantity INT DEFAULT 1,
-    price DECIMAL(10,2),
-    freight_value DECIMAL(10,2),
-    total_value DECIMAL(10,2),
-    payment_value DECIMAL(10,2),
-    no_of_installments INT,
-    -- Dates
-    limit_delivery_date DATETIME2,
-    planned_delivery_date DATETIME2,
-    actual_delivery_date DATETIME2,
-    days_to_deliver INT,
-    delivery_delay INT,
-    -- Versioning
-    load_date DATETIME2 DEFAULT GETDATE(),
-    FOREIGN KEY (customer_key) REFERENCES [dw].[Dim_Customers](customer_key),
-    FOREIGN KEY (product_key) REFERENCES [dw].[Dim_Products](product_key),
-    FOREIGN KEY (seller_key) REFERENCES [dw].[Dim_Sellers](seller_key),
-    FOREIGN KEY (purchase_date_key) REFERENCES [dw].[Dim_Calendar](date_key),
-    FOREIGN KEY (delivery_date_key) REFERENCES [dw].[Dim_Calendar](date_key),
-    FOREIGN KEY (status_key) REFERENCES [dw].[Dim_Status](status_key),
-    FOREIGN KEY (payment_key) REFERENCES [dw].[Dim_Payment](payment_key)
-);
+-- Fact Sales (for reference)
+-- CREATE TABLE [dw].[Fact_Sales] (
+--     sales_key INT PRIMARY KEY IDENTITY(1,1),
+--     order_id VARCHAR(50),
+--     customer_key INT,
+--     product_key INT,
+--     seller_key INT,
+--     purchase_date_key INT,
+--     delivery_date_key INT,
+--     status_key INT,
+--     payment_key INT,
+--     -- Metrics
+--     quantity INT DEFAULT 1,
+--     price DECIMAL(10,2),
+--     freight_value DECIMAL(10,2),
+--     total_value DECIMAL(10,2),
+--     payment_value DECIMAL(10,2),
+--     no_of_installments INT,
+--     -- Dates
+--     limit_delivery_date DATETIME2,
+--     planned_delivery_date DATETIME2,
+--     actual_delivery_date DATETIME2,
+--     days_to_deliver INT,
+--     delivery_delay INT,
+--     -- Versioning
+--     load_date DATETIME2 DEFAULT GETDATE(),
+--     FOREIGN KEY (customer_key) REFERENCES [dw].[Dim_Customers](customer_key),
+--     FOREIGN KEY (product_key) REFERENCES [dw].[Dim_Products](product_key),
+--     FOREIGN KEY (seller_key) REFERENCES [dw].[Dim_Sellers](seller_key),
+--     FOREIGN KEY (purchase_date_key) REFERENCES [dw].[Dim_Calendar](date_key),
+--     FOREIGN KEY (delivery_date_key) REFERENCES [dw].[Dim_Calendar](date_key),
+--     FOREIGN KEY (status_key) REFERENCES [dw].[Dim_Status](status_key),
+--     FOREIGN KEY (payment_key) REFERENCES [dw].[Dim_Payment](payment_key)
+-- );
