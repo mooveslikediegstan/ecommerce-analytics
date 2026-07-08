@@ -1,5 +1,4 @@
 WITH item_orders as (
-    
     SELECT 
         soi.order_id,
         soi.order_item_id,
@@ -16,10 +15,11 @@ WITH item_orders as (
 aggregated_payments as (
     SELECT
         order_id,
+        payment_type,
         MAX(payment_installments) AS no_of_installments,
         SUM(payment_value) as payment_value
     FROM [staging].[stg_payments]
-    GROUP BY [order_id]
+    GROUP BY [order_id],[payment_type]
 ),
 calendar as (
     SELECT
@@ -28,30 +28,42 @@ calendar as (
     FROM [dw].[Dim_Calendar]
 ),
 orders AS(
-    SELECT 
-        io.order_id,
+    SELECT
+        so.order_id,
         dc.customer_key,
         io.product_key,
         io.seller_key,
         cld.date_key as purchase_date_key,
         cld2.date_key as delivery_date_key,
+        ds.status_key,
+        dpay.payment_key,
         io.price,
         io.freight_value,
         io.total_value,  
         ap.payment_value,
         ap.no_of_installments,
-        io.shipping_limit_date,
-        so.order_estimated_delivery_date,
-        so.order_delivered_customer_date
+        CAST(io.shipping_limit_date as DATE) AS shipping_limit_date,
+        CAST(so.order_estimated_delivery_date as DATE) AS order_estimated_delivery_date,
+        CAST(so.order_delivered_customer_date as DATE) AS order_delivered_customer_date,
+        CASE
+            WHEN cld2.date_key IS NULL THEN NULL  -- pedido ainda não entregue
+            ELSE DATEDIFF(DAY, cld.date_date, cld2.date_date)
+        END AS days_to_deliver,
+        CASE
+            WHEN so.order_delivered_customer_date > io.shipping_limit_date THEN DATEDIFF(DAY,io.shipping_limit_date,so.order_delivered_customer_date)
+            ELSE 0
+        END AS delivery_delay
     FROM [staging].[stg_orders] so
     LEFT JOIN item_orders io ON so.order_id = io.order_id
     LEFT JOIN [dw].[Dim_Customers] dc ON so.customer_id = dc.customer_id
     LEFT JOIN aggregated_payments ap ON so.order_id = ap.order_id
-    LEFT JOIN calendar cld ON so.order_approved_at = cld.date_date
-    LEFT JOIN calendar cld2 ON so.order_delivered_customer_date = cld.date_date 
+    LEFT JOIN [dw].[Dim_Status] ds ON ds.status_name = so.order_status
+    LEFT JOIN [dw].[Dim_Payment] dpay ON dpay.payment_type = ap.payment_type
+    LEFT JOIN calendar cld ON CAST(so.order_approved_at AS DATE) = cld.date_date
+    LEFT JOIN calendar cld2 ON CAST(so.order_delivered_customer_date AS DATE) = cld2.date_date 
 )
 
-SELECT * FROM orders;
+SELECT TOP 100 * FROM orders;
 
 -- Fact Vendas
 CREATE TABLE [dw].[Fact_Sales] (
