@@ -14,7 +14,7 @@ SELECT
     COUNT(DISTINCT fs.order_id) as sales_count,
     SUM(fs.total_value) as total_revenue,
     ROUND(AVG(fs.total_value), 2) as avg_ticket,
-    ROUND(AVG(CAST(fr.nota_review AS FLOAT)), 2) as average_review_score,
+    ROUND(AVG(CAST(fr.review_score AS FLOAT)), 2) as average_review_score,
     COUNT(DISTINCT fr.review_id) as review_count,
     ROUND(AVG(fs.days_to_deliver), 2) as average_days_to_deliver
 FROM [dw].[Fact_Sales] fs
@@ -34,7 +34,7 @@ WITH base AS (
         dc.customer_id,
         DATEDIFF(DAY, MAX(fs.purchase_date_key), (SELECT MAX(date_key) FROM [dw].[Dim_Calendar])) AS recency_days,
         COUNT(DISTINCT fs.order_id) AS frequency,
-        SUM(fs.total_value) AS money_value
+        SUM(fs.total_value) AS monetary_value
     FROM [dw].[Dim_Customers] dc
     INNER JOIN [dw].[Fact_Sales] fs ON dc.customer_key = fs.customer_key
     GROUP BY dc.customer_key, dc.customer_id
@@ -50,7 +50,7 @@ rfm_scored AS (
         -- Who bought more recently receives a greater score
         NTILE(5) OVER (ORDER BY recency_days DESC) AS recency_score,
         NTILE(5) OVER (ORDER BY frequency) AS frequency_score,
-        NTILE(5) OVER (ORDER BY money_value) AS monetary_score
+        NTILE(5) OVER (ORDER BY monetary_value) AS monetary_score
     FROM base
 )
 
@@ -72,12 +72,12 @@ SELECT
     ) AS weighted_rfm_score,
     -- Segmento baseado nos scores individuais
     CASE
-        WHEN recency_score >= 4 AND frequency_score >= 4 AND monetary_score >= 4 THEN 'Campeão'
-        WHEN recency_score <= 2 AND frequency_score >= 4 AND monetary_score >= 4 THEN 'Em Risco'
+        WHEN recency_score >= 4 AND frequency_score >= 4 AND monetary_score >= 4 THEN 'Champion'
+        WHEN recency_score <= 2 AND frequency_score >= 4 AND monetary_score >= 4 THEN 'At Risk'
         WHEN recency_score >= 4 AND frequency_score <= 2 THEN 'Promissor'
-        WHEN recency_score >= 3 AND frequency_score >= 3 AND monetary_score >= 3 THEN 'Leal'
-        WHEN recency_score <= 1 AND frequency_score <= 1 AND monetary_score <= 1 THEN 'Perdido'
-        ELSE 'Potencial'
+        WHEN recency_score >= 3 AND frequency_score >= 3 AND monetary_score >= 3 THEN 'Loyal'
+        WHEN recency_score <= 1 AND frequency_score <= 1 AND monetary_score <= 1 THEN 'Lost'
+        ELSE 'Potential'
     END AS segment
 FROM rfm_scored;
 GO
@@ -108,7 +108,7 @@ monthly_activity AS (
         fp.cohort_month,
         DATEFROMPARTS(YEAR(cld.date_date), MONTH(cld.date_date), 1) AS order_month
     FROM [dw].[Fact_Sales] fs
-    JOIN [dw].[Dim_Data] cld ON fs.data_compra_key = cld.data_key
+    JOIN [dw].[Dim_Calendar] cld ON fs.purchase_date_key = cld.date_key
     JOIN first_purchase fp ON fs.customer_key = fp.customer_key
     GROUP BY fs.customer_key, fp.cohort_month, YEAR(cld.date_date), MONTH(cld.date_date)
 ),
@@ -164,7 +164,7 @@ WITH order_gaps AS (
             LAG(cld.date_date) OVER (PARTITION BY fs.customer_key ORDER BY cld.date_date),
             cld.date_date) AS days_since_prev_order
     FROM [dw].[Fact_Sales] fs
-    JOIN [dw].[Dim_Calendar] cld ON fs.data_compra_key = cld.data_key
+    JOIN [dw].[Dim_Calendar] cld ON fs.purchase_date_key = cld.date_key
 ),
 customer_metrics AS (
     -- Level 2: aggregate behavior metrics by customer
@@ -190,14 +190,14 @@ churn_scored AS (
         total_revenue,
         ROUND(avg_cycle_days, 1) AS avg_cycle_days,
         ROUND(stdev_cycle_days, 1) AS cycle_variability,
-        -- Razão entre silêncio atual e ciclo normal (>1 = fora do padrão)
+        -- Ratio between silence and normal cycle (>1 = abnormal)
         ROUND(days_since_purchase / NULLIF(avg_cycle_days, 0), 2) AS silence_ratio,
-        -- Score 0-100: proporcional ao quanto o silêncio excede o ciclo médio
+        -- Score 0-100: proportional to how much silence period exceeds average purchase cycle
         LEAST(
             ROUND((days_since_purchase / NULLIF(avg_cycle_days, 0)) * 50, 0),
             100
         ) AS churn_risk_score,
-        -- 4 categorias: separa "provável perda" de "em risco" e "perdido"
+        -- 4 categories: 
         CASE
             WHEN days_since_purchase > avg_cycle_days * 3 THEN 'Churned'
             WHEN days_since_purchase > avg_cycle_days * 2 THEN 'At Risk'
@@ -219,5 +219,5 @@ SELECT
     cs.total_purchases,
     cs.total_revenue
 FROM churn_scored cs
-JOIN [dw].[Dim_Clientes] dc ON cs.customer_key = dc.customer_key;
+JOIN [dw].[Dim_Customers] dc ON cs.customer_key = dc.customer_key;
 GO

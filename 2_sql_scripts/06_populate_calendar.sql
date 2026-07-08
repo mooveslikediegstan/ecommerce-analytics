@@ -11,7 +11,7 @@ WHILE @CurrentDate <= @EndDate
 BEGIN
     INSERT INTO [dw].[Dim_Calendar] (
         date_key,
-        complete_date,
+        date_date,
         date_year,
         date_month,
         month_name,
