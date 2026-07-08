@@ -65,5 +65,20 @@ CREATE TABLE [dw].[Fact_Reviews] (
     FOREIGN KEY (answer_date_key) REFERENCES [dw].[Dim_Calendar](date_key)
 );
 PRINT '''Fact_Reviews'' table created in ''dw'' schema.';
- 
+
+CREATE TABLE [dw].[Fact_Payments] (
+    payment_key        INT PRIMARY KEY IDENTITY(1,1),
+    order_id           VARCHAR(50),
+    customer_key       INT,
+    purchase_date_key  INT,
+    payment_type_key   INT,
+    payment_sequential INT,
+    no_of_installments INT,
+    payment_value      DECIMAL(10,2),
+    load_date          DATETIME2 DEFAULT GETDATE(),
+    FOREIGN KEY (customer_key)     REFERENCES [dw].[Dim_Customers](customer_key),
+    FOREIGN KEY (purchase_date_key) REFERENCES [dw].[Dim_Calendar](date_key),
+    FOREIGN KEY (payment_type_key) REFERENCES [dw].[Dim_Payment](payment_key)
+);
+PRINT '''Fact_Payments'' table created in ''dw'' schema.';
 GO
