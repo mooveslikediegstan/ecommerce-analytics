@@ -27,9 +27,9 @@ BEGIN
                 sc.customer_city,
                 sc.customer_state,
                 oc.first_purchase,
-                oc.total_sales
+                oc.total_purchases
             FROM [staging].[stg_customers] sc
-            INNER JOIN orders_by_customer oc ON sc.customer_id = pc.customer_id
+            INNER JOIN orders_by_customer oc ON sc.customer_id = oc.customer_id
             LEFT JOIN  [dw].[Dim_Customers] dc ON sc.customer_id = dc.customer_id
             WHERE dc.customer_id IS NULL  -- equivalent to NOT EXISTS, much cleaner
         )
@@ -47,7 +47,7 @@ BEGIN
             customer_city,
             customer_state,
             first_purchase,
-            total_sales
+            total_purchases
         FROM new_customers;
  
         PRINT 'Customer Dim loaded successfully!';
