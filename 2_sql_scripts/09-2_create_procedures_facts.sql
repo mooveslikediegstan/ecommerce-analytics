@@ -172,7 +172,7 @@ BEGIN
             day_to_answer
         FROM reviews_to_fact;
 
-        PRINT 'Fact Sales loaded successfully! '+ CAST(@@ROWCOUNT AS VARCHAR);        
+        PRINT 'Fact Reviews loaded successfully! '+ CAST(@@ROWCOUNT AS VARCHAR);        
     END TRY
     BEGIN CATCH
         PRINT 'Error loading Reviews:' + ERROR_MESSAGE();
@@ -214,7 +214,7 @@ BEGIN
                 cld.date_key as purchase_date_key,
                 dp.payment_key as payment_type_key,
                 sp.payment_sequential,
-                sp.payment_installments,
+                sp.payment_installments as no_of_installments,
                 sp.payment_value
             FROM [staging].[stg_payments] sp
             LEFT JOIN sales_orders so ON sp.order_id = so.order_id
@@ -228,7 +228,7 @@ BEGIN
             purchase_date_key,
             payment_type_key,
             payment_sequential,
-            payment_installments,
+            no_of_installments,
             payment_value
         )
         SELECT
@@ -237,14 +237,14 @@ BEGIN
             purchase_date_key,
             payment_type_key,
             payment_sequential,
-            payment_installments,
+            no_of_installments,
             payment_value
         FROM order_payments;
 
         PRINT 'Fact Payments loaded successfully! '+ CAST(@@ROWCOUNT AS VARCHAR);        
     END TRY
     BEGIN CATCH
-        PRINT 'Error loading Reviews:' + ERROR_MESSAGE();
+        PRINT 'Error loading Payments:' + ERROR_MESSAGE();
         THROW;
     END CATCH
 END
