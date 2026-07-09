@@ -44,4 +44,44 @@ SET @sql = N'BULK INSERT [staging].[geolocation] FROM ''' + @filepath + 'olist_g
 EXEC sp_executesql @sql;
 PRINT 'Geolocation loaded';
 
-PRINT '\nAll tables loaded!';
+PRINT 'All tables loaded!';
+
+-- remove double quotes "" for ids to avoid problems with relationships
+
+-- stg_products
+UPDATE [staging].[stg_products]
+SET product_id = REPLACE(product_id, '"', '')
+WHERE product_id LIKE '"%"';
+
+-- stg_order_items
+UPDATE [staging].[stg_order_items]
+SET 
+    product_id = REPLACE(product_id, '"', ''),
+    seller_id  = REPLACE(seller_id,  '"', ''),
+    order_id   = REPLACE(order_id,   '"', '')
+WHERE product_id LIKE '"%"'
+   OR seller_id  LIKE '"%"'
+   OR order_id   LIKE '"%"';
+
+-- stg_sellers
+UPDATE [staging].[stg_sellers]
+SET seller_id = REPLACE(seller_id, '"', '')
+WHERE seller_id LIKE '"%"';
+
+-- stg_orders
+UPDATE [staging].[stg_orders]
+SET 
+    order_id    = REPLACE(order_id,    '"', ''),
+    customer_id = REPLACE(customer_id, '"', '')
+WHERE order_id    LIKE '"%"'
+   OR customer_id LIKE '"%"';
+
+-- stg_customers
+UPDATE [staging].[stg_customers]
+SET 
+    customer_id        = REPLACE(customer_id,        '"', ''),
+    customer_unique_id = REPLACE(customer_unique_id, '"', '')
+WHERE customer_id        LIKE '"%"'
+   OR customer_unique_id LIKE '"%"';
+
+PRINT 'All tables normalized!!';
