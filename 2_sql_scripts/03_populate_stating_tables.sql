@@ -84,4 +84,9 @@ SET
 WHERE customer_id        LIKE '"%"'
    OR customer_unique_id LIKE '"%"';
 
+UPDATE [staging].[stg_payments]
+SET 
+    order_id = REPLACE(order_id,'"', '')
+WHERE order_id LIKE '"%"';
+
 PRINT 'All tables normalized!!';
