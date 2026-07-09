@@ -44,7 +44,6 @@ CREATE TABLE [dw].[Fact_Reviews] (
     review_id VARCHAR(50),
     order_id VARCHAR(50),
     customer_key INT,
-    product_key INT,
     review_date_key INT,
     answer_date_key INT,
     -- Metrics
@@ -56,7 +55,6 @@ CREATE TABLE [dw].[Fact_Reviews] (
     -- Versioning
     load_date DATETIME2 DEFAULT GETDATE(),
     FOREIGN KEY (customer_key) REFERENCES [dw].[Dim_Customers](customer_key),
-    FOREIGN KEY (product_key) REFERENCES [dw].[Dim_Products](product_key),
     FOREIGN KEY (review_date_key) REFERENCES [dw].[Dim_Calendar](date_key),
     FOREIGN KEY (answer_date_key) REFERENCES [dw].[Dim_Calendar](date_key)
 );

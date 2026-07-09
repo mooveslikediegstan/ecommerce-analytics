@@ -90,10 +90,92 @@ BEGIN
             delivery_delay
         FROM sales_orders;
 
-        PRINT 'Fact Sales loaded successfully!'+ CAST(@@ROWCOUNT AS VARCHAR);;
+        PRINT 'Fact Sales loaded successfully!'+ CAST(@@ROWCOUNT AS VARCHAR);
     END TRY
     BEGIN CATCH
         PRINT 'Error loading Sales:' + ERROR_MESSAGE();
+        THROW;
+    END CATCH
+END
+GO
+
+CREATE PROCEDURE [dw].[sp_Load_Fact_Reviews]
+AS
+BEGIN
+    SET NOCOUNT ON;
+    BEGIN TRY
+
+        WITH orders as (
+            SELECT
+                order_id,
+                customer_id
+            FROM [staging].[stg_orders]
+        ),
+        customers as (
+            SELECT
+                customer_key,
+                customer_id
+            FROM [dw].[Dim_Customers]
+        ),
+        calendar as (
+            SELECT
+                date_key,
+                date_date
+            FROM [dw].[Dim_Calendar]
+        ),
+        reviews_to_fact as (
+            SELECT
+                sr.review_id,
+                sr.order_id,
+                c.customer_key,
+                cld1.date_key as review_date_key,
+                cld2.date_key as answer_date_key,
+                sr.review_score,
+                sr.review_comment_title,
+                sr.review_comment_message,
+                CASE 
+                    WHEN review_answer_timestamp IS NULL THEN 0
+                    ELSE 1
+                END AS has_answer,
+                CASE 
+                    WHEN review_answer_timestamp IS NULL THEN 0
+                    ELSE DATEDIFF(DAY,review_creation_date,review_answer_timestamp)
+                END AS day_to_answer  
+            FROM [staging].[stg_reviews] sr
+            LEFT JOIN orders o ON sr.order_id = o.order_id
+            LEFT JOIN customers c ON o.customer_id = c.customer_id
+            LEFT JOIN calendar cld1 ON sr.review_creation_date = cld1.date_date
+            LEFT JOIN calendar cld2 ON sr.review_answer_timestamp = cld2.date_date
+        )
+        INSERT INTO [dw].[Fact_Reviews] (
+            review_id,
+            order_id,
+            customer_key,
+            review_date_key,
+            answer_date_key,
+            review_score,
+            review_comment_title,
+            review_comment_message,
+            has_answer,
+            day_to_answer
+        )
+        SELECT
+            review_id,
+            order_id,
+            customer_key,
+            review_date_key,
+            answer_date_key,
+            review_score,
+            review_comment_title,
+            review_comment_message,
+            has_answer,
+            day_to_answer
+        FROM reviews_to_fact;
+
+        PRINT 'Fact Sales loaded successfully!'+ CAST(@@ROWCOUNT AS VARCHAR);        
+    END TRY
+    BEGIN CATCH
+        PRINT 'Error loading Reviews:' + ERROR_MESSAGE();
         THROW;
     END CATCH
 END
