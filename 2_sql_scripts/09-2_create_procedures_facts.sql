@@ -172,7 +172,76 @@ BEGIN
             day_to_answer
         FROM reviews_to_fact;
 
-        PRINT 'Fact Sales loaded successfully!'+ CAST(@@ROWCOUNT AS VARCHAR);        
+        PRINT 'Fact Sales loaded successfully! '+ CAST(@@ROWCOUNT AS VARCHAR);        
+    END TRY
+    BEGIN CATCH
+        PRINT 'Error loading Reviews:' + ERROR_MESSAGE();
+        THROW;
+    END CATCH
+END
+GO
+
+CREATE PROCEDURE [dw].[sp_Load_Fact_Payments]
+AS
+BEGIN
+    SET NOCOUNT ON;
+    BEGIN TRY
+
+
+        WITH sales_orders as (
+            SELECT 
+                order_id,
+                customer_id,
+                order_approved_at
+            FROM [staging].[stg_orders]
+        ),
+        customers as (
+            SELECT
+                customer_key,
+                customer_id
+            FROM [dw].[Dim_Customers]
+        ),
+        calendar as (
+            SELECT
+                date_key,
+                date_date
+            FROM [dw].[Dim_Calendar]
+        ),
+        order_payments as (
+            SELECT 
+                sp.order_id,
+                c.customer_key,
+                cld.date_key as purchase_date_key,
+                dp.payment_key as payment_type_key,
+                sp.payment_sequential,
+                sp.payment_installments,
+                sp.payment_value
+            FROM [staging].[stg_payments] sp
+            LEFT JOIN sales_orders so ON sp.order_id = so.order_id
+            LEFT JOIN customers c ON so.customer_id = c.customer_id
+            LEFT JOIN calendar cld ON CAST(so.order_approved_at as DATE) = cld.date_date
+            LEFT JOIN [dw].[Dim_Payment] dp ON sp.payment_type = dp.payment_type
+        )
+        INSERT INTO [dw].[Fact_Payments] (
+            order_id,
+            customer_key,
+            purchase_date_key,
+            payment_type_key,
+            payment_sequential,
+            payment_installments,
+            payment_value
+        )
+        SELECT
+            order_id,
+            customer_key,
+            purchase_date_key,
+            payment_type_key,
+            payment_sequential,
+            payment_installments,
+            payment_value
+        FROM order_payments;
+
+        PRINT 'Fact Payments loaded successfully! '+ CAST(@@ROWCOUNT AS VARCHAR);        
     END TRY
     BEGIN CATCH
         PRINT 'Error loading Reviews:' + ERROR_MESSAGE();
