@@ -31,19 +31,19 @@ WITH base AS (
     -- Level 1: raw aggregation by customer
     SELECT
         dc.customer_key,
-        dc.customer_id,
+        dc.customer_unique_id,
         DATEDIFF(DAY, MAX(fs.purchase_date_key), (SELECT MAX(date_key) FROM [dw].[Dim_Calendar])) AS recency_days,
         COUNT(DISTINCT fs.order_id) AS frequency,
         SUM(fs.total_value) AS monetary_value
     FROM [dw].[Dim_Customers] dc
     INNER JOIN [dw].[Fact_Sales] fs ON dc.customer_key = fs.customer_key
-    GROUP BY dc.customer_key, dc.customer_id
+    GROUP BY dc.customer_key, dc.customer_unique_id
 ),
 rfm_scored AS (
     -- Level 2: apply NTILE over metrics above
     SELECT
         customer_key,
-        customer_id,
+        customer_unique_id,
         recency_days,
         frequency,
         monetary_value,
@@ -56,7 +56,7 @@ rfm_scored AS (
 
 SELECT
     customer_key,
-    customer_id,
+    customer_unique_id,
     recency_days,
     frequency,
     monetary_value,
@@ -208,7 +208,7 @@ churn_scored AS (
 )
 SELECT
     cs.customer_key,
-    dc.customer_id,
+    dc.customer_unique_id,
     cs.churn_status,
     cs.churn_risk_score,
     cs.last_purchase,

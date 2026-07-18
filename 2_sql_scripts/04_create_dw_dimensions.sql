@@ -25,7 +25,6 @@ PRINT '''Dim_Calendar'' table created in ''dw'' schema.';
 -- Customers
 CREATE TABLE [dw].[Dim_Customers] (
     customer_key INT PRIMARY KEY IDENTITY(1,1),
-    customer_id VARCHAR(50),
     customer_unique_id VARCHAR(50),
     city VARCHAR(100),
     city_state VARCHAR(2),

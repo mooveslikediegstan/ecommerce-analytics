@@ -13,28 +13,27 @@ BEGIN
 
         WITH orders_by_customer AS (
             SELECT
-                customer_id,
-                MIN(CAST(order_purchase_timestamp AS DATE)) AS first_purchase,
+                sc.customer_unique_id,
+                MIN(CAST(so.order_purchase_timestamp AS DATE)) AS first_purchase,
                 COUNT(*) AS total_purchases
-            FROM [staging].[stg_orders]
-            GROUP BY customer_id
+            FROM [staging].[stg_orders] so
+            LEFT JOIN [staging].[stg_customers] sc ON so.customer_id = sc.customer_id
+            GROUP BY customer_unique_id
         ),
         new_customers AS (
             -- filter only the customers which do not exist in the dimension
-            SELECT
-                sc.customer_id,
+            SELECT DISTINCT
                 sc.customer_unique_id,
                 sc.customer_city,
                 sc.customer_state,
                 oc.first_purchase,
                 oc.total_purchases
             FROM [staging].[stg_customers] sc
-            INNER JOIN orders_by_customer oc ON sc.customer_id = oc.customer_id
-            LEFT JOIN  [dw].[Dim_Customers] dc ON sc.customer_id = dc.customer_id
-            WHERE dc.customer_id IS NULL  -- equivalent to NOT EXISTS, much cleaner
+            INNER JOIN orders_by_customer oc ON sc.customer_unique_id = oc.customer_unique_id
+            LEFT JOIN  [dw].[Dim_Customers] dc ON sc.customer_unique_id = dc.customer_unique_id
+            WHERE dc.customer_unique_id IS NULL  -- equivalent to NOT EXISTS, much cleaner
         )
         INSERT INTO [dw].[Dim_Customers] (
-            customer_id,
             customer_unique_id,
             city,
             city_state,
@@ -42,7 +41,6 @@ BEGIN
             total_purchase_history
         )
         SELECT
-            customer_id,
             customer_unique_id,
             customer_city,
             customer_state,

@@ -50,7 +50,8 @@ BEGIN
                 END AS delivery_delay
             FROM [staging].[stg_orders] so
             LEFT JOIN item_orders io ON so.order_id = io.order_id
-            LEFT JOIN [dw].[Dim_Customers] dc ON so.customer_id = dc.customer_id
+            LEFT JOIN [staging].[stg_customers] sc ON so.customer_id = sc.customer_id
+            LEFT JOIN [dw].[Dim_Customers] dc ON sc.customer_unique_id = dc.customer_unique_id
             LEFT JOIN [dw].[Dim_Status] ds ON ds.status_name = so.order_status
             LEFT JOIN calendar cld ON CAST(so.order_approved_at AS DATE) = cld.date_date
             LEFT JOIN calendar cld2 ON CAST(so.order_delivered_customer_date AS DATE) = cld2.date_date 
@@ -107,14 +108,15 @@ BEGIN
 
         WITH orders as (
             SELECT
-                order_id,
-                customer_id
-            FROM [staging].[stg_orders]
+                so.order_id,
+                sc.customer_unique_id
+            FROM [staging].[stg_orders] so
+            LEFT JOIN [staging].[stg_customers] sc ON so.customer_id = sc.customer_id
         ),
         customers as (
             SELECT
                 customer_key,
-                customer_id
+                customer_unique_id
             FROM [dw].[Dim_Customers]
         ),
         calendar as (
@@ -143,7 +145,7 @@ BEGIN
                 END AS day_to_answer  
             FROM [staging].[stg_reviews] sr
             LEFT JOIN orders o ON sr.order_id = o.order_id
-            LEFT JOIN customers c ON o.customer_id = c.customer_id
+            LEFT JOIN customers c ON o.customer_unique_id = c.customer_unique_id
             LEFT JOIN calendar cld1 ON sr.review_creation_date = cld1.date_date
             LEFT JOIN calendar cld2 ON sr.review_answer_timestamp = cld2.date_date
         )
@@ -190,15 +192,16 @@ BEGIN
 
         WITH sales_orders as (
             SELECT 
-                order_id,
-                customer_id,
-                order_approved_at
-            FROM [staging].[stg_orders]
+                so.order_id,
+                sc.customer_unique_id,
+                so.order_approved_at
+            FROM [staging].[stg_orders] so
+            LEFT JOIN [staging].[stg_customers] sc ON so.customer_id = sc.customer_id
         ),
         customers as (
             SELECT
                 customer_key,
-                customer_id
+                customer_unique_id
             FROM [dw].[Dim_Customers]
         ),
         calendar as (
@@ -218,7 +221,7 @@ BEGIN
                 sp.payment_value
             FROM [staging].[stg_payments] sp
             LEFT JOIN sales_orders so ON sp.order_id = so.order_id
-            LEFT JOIN customers c ON so.customer_id = c.customer_id
+            LEFT JOIN customers c ON so.customer_unique_id = c.customer_unique_id
             LEFT JOIN calendar cld ON CAST(so.order_approved_at as DATE) = cld.date_date
             LEFT JOIN [dw].[Dim_Payment] dp ON sp.payment_type = dp.payment_type
         )
