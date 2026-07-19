@@ -20,6 +20,6 @@ Thumbs.db
 
 # Big PowerBI files
 3_powerbi/analise_vendas.pbix
-3_powerbi/analise_vendasv2.pbix
+3_powerbi/analise_vendasv3.pbix
 3_powerbi/1_sql_queries/
 *.pbix-backup

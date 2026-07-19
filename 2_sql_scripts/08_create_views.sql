@@ -93,13 +93,11 @@ WITH first_purchase AS (
     -- Level 1: 1st purchase of each customer
     SELECT
         dc.customer_key,
-        DATEFROMPARTS(YEAR(cld.date_date), MONTH(cld.date_date), 1) AS cohort_month
+        MIN(DATEFROMPARTS(YEAR(cld.date_date), MONTH(cld.date_date), 1)) AS cohort_month
     FROM [dw].[Fact_Sales] fs
     JOIN [dw].[Dim_Customers] dc ON fs.customer_key = dc.customer_key
     JOIN [dw].[Dim_Calendar] cld ON fs.purchase_date_key = cld.date_key
-    GROUP BY dc.customer_key, YEAR(cld.date_date), MONTH(cld.date_date)
-    HAVING DATEFROMPARTS(YEAR(cld.date_date), MONTH(cld.date_date), 1) =
-           MIN(DATEFROMPARTS(YEAR(cld.date_date), MONTH(cld.date_date), 1))
+    GROUP BY dc.customer_key
 ),
 monthly_activity AS (
     -- Level 2: one row per customer per purchased month
